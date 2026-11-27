@@ -764,7 +764,7 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
         // a chest's slots are small: lean in closer than for a block-sized surface
         if (style == Style.BOX) return partner != null ? 58 : 48;
         // a double chest's front is wide: a wider view, as the camera can't go further back than the player stands
-        if (chestFrontStyle() && partner != null) return 64;
+        if (chestFrontStyle() && partner != null) return 60;
         return 56;
     }
 
@@ -776,7 +776,7 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
     @Override
     public List<Vec3> approach(LocalPlayer player) {
         // the camera stays near the player (the base mod tethers it), so for a double chest's front the player stands further back
-        double out = chestFrontStyle() && partner != null ? 1.2 : 0.9;
+        double out = chestFrontStyle() && partner != null ? 1.1 : 0.9;
         Vec3 stand = new Vec3(base.x + side.getStepX() * out, player.getY(), base.z + side.getStepZ() * out);
         boolean walk = Math.hypot(stand.x - player.getX(), stand.z - player.getZ()) > 0.06;
         return walk ? List.of(stand) : List.of();
@@ -796,7 +796,7 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
             }
             case FACE -> {
                 // a chest's front is wider than a barrel's face (a double chest's twice as wide): further back to take it all in
-                double back = !chestFrontStyle() ? 0.8 : partner == null ? 0.9 : 1.15;
+                double back = !chestFrontStyle() ? 0.8 : partner == null ? 0.9 : 1.05;
                 eye = work.add(side().scale(back)).add(0, 0.12, 0);
                 // aimed a little above the middle, so the slots sit a little low on screen, clear of the drawer
                 look = work.add(0, 0.05, 0);
@@ -817,7 +817,8 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
         } else if (panelView > 0.001) {
             // half way towards the open upgrade's slots and back a little, the same way round: both in view
             Vec3 toPanel = panelSurface().center().subtract(work).scale(0.5 * Anim.smoother(panelView));
-            Vec3 back = side().scale((roofed ? 0.5 : 0.18) * Anim.smoother(panelView));
+            // a covered barrel's camera starts close to its face and backs off to take in the panel too; a covered chest's is back already
+            Vec3 back = side().scale((chestFrontStyle() ? 0.05 : roofed ? 0.5 : 0.18) * Anim.smoother(panelView));
             eye = eye.add(toPanel).add(back);
             look = look.add(toPanel);
         }
