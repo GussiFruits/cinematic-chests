@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.cinematicchests.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "AddonStationsAccessor",
+    "DefinitionMixin",
+    "MenuActionsMixin",
+    "ShulkerBoxBlockInvoker"
+  ],
+  "client": [
+    "AddonScenesMixin",
+    "ParticleEngineMixin",
+    "SceneMixin",
+    "SceneScreenMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

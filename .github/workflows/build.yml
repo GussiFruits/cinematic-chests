@@ -1,0 +1,43 @@
+name: Build
+
+# Every push to main and every pull request is built; a pull request can only be merged once this passes.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Cinematic Interactions isn't on any Maven repository and is All Rights Reserved, so it is never committed: the build
+      # downloads the official file from CurseForge and checks it is exactly the one this add-on was built against.
+      - name: Download Cinematic Interactions
+        run: |
+          mkdir -p libs
+          curl -fsSL -A "cinematicchests-ci" -o libs/cinematic-interactions-neoforge-1.21.1-0.18.30.jar \
+            "https://www.curseforge.com/api/v1/mods/1743441/files/9345403/download"
+          echo "4a6bb18685bb8adbd2ee08a242b08088dbd5d9ddf0bf1c3d140269107ba4d7c5  libs/cinematic-interactions-neoforge-1.21.1-0.18.30.jar" | sha256sum -c -
+
+      # -Pbare: the dev-only test mods are left out; the published jar never contains them anyway
+      - name: Build
+        run: ./gradlew build -Pbare --no-configuration-cache
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cinematicchests-jar
+          path: build/libs/*.jar
+          if-no-files-found: error

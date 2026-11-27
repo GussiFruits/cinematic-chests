@@ -1,0 +1,20 @@
+# Third-party jars are only for compiling and dev runs; never publish them with the source.
+# (Cinematic Interactions is "All Rights Reserved" on CurseForge; download it into libs/ yourself.)
+libs/*.jar
+libs/dev/
+
+# build output and dev-run game folder
+build/
+.gradle/
+run/
+run-client2/
+bin/
+out/
+.idea/
+*.iml
+
+# editor settings with paths from your machine
+.vscode/
+
+# IDE launch files generated with paths from your machine
+.eclipse/

@@ -1,0 +1,68 @@
+name: Release
+
+# Pushing a tag like v0.1.1 builds the jar, makes a GitHub release with it, and (once the CURSEFORGE_TOKEN secret is set)
+# uploads it to CurseForge as a beta. The tag must match mod_version in gradle.properties.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      CURSEFORGE_TOKEN: ${{ secrets.CURSEFORGE_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the tag matches the mod version
+        run: |
+          version=$(grep '^mod_version=' gradle.properties | cut -d= -f2)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match mod_version=$version in gradle.properties"; exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Download Cinematic Interactions
+        run: |
+          mkdir -p libs
+          curl -fsSL -A "cinematicchests-ci" -o libs/cinematic-interactions-neoforge-1.21.1-0.18.30.jar \
+            "https://www.curseforge.com/api/v1/mods/1743441/files/9345403/download"
+          echo "4a6bb18685bb8adbd2ee08a242b08088dbd5d9ddf0bf1c3d140269107ba4d7c5  libs/cinematic-interactions-neoforge-1.21.1-0.18.30.jar" | sha256sum -c -
+
+      - name: Build
+        run: ./gradlew build -Pbare --no-configuration-cache
+
+      - name: GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Cinematic Chests ${{ env.VERSION }} (NeoForge 1.21.1)
+          files: build/libs/cinematicchests-${{ env.VERSION }}.jar
+          prerelease: true
+          generate_release_notes: true
+
+      - name: Upload to CurseForge
+        if: env.CURSEFORGE_TOKEN != ''
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          curseforge-id: 1832434
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: build/libs/cinematicchests-${{ env.VERSION }}.jar
+          name: Cinematic Chests ${{ env.VERSION }} (NeoForge 1.21.1)
+          version: ${{ env.VERSION }}
+          version-type: beta
+          loaders: neoforge
+          game-versions: 1.21.1
+          java: 21
+          dependencies: |
+            cinematic-interactions(required){curseforge:1743441}
+            sophisticated-storage(optional)

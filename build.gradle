@@ -1,0 +1,122 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.148'
+    id 'idea'
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    distributionType = Wrapper.DistributionType.BIN
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    runs {
+        client {
+            client()
+        }
+        // a second player for multiplayer tests: own game folder, own name (join the dev server at localhost)
+        client2 {
+            client()
+            gameDirectory = project.file('run-client2')
+            programArguments.addAll('--username', 'Player2')
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+        configureEach {
+            logLevel = org.slf4j.event.Level.INFO
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+configurations {
+    runtimeClasspath.extendsFrom localRuntime
+}
+
+repositories {
+    // Modrinth's Maven, used only for the dev-time modded-container test mods below.
+    exclusiveContent {
+        forRepository { maven { url = "https://api.modrinth.com/maven" } }
+        filter { includeGroup "maven.modrinth" }
+    }
+}
+
+dependencies {
+    // Cinematic Interactions: compiled against, and loaded in runClient/runServer. Never bundled.
+    compileOnly files(cinematic_jar)
+    localRuntime files(cinematic_jar)
+
+    // The Sophisticated support (client/compat/SophisticatedRack, compat/SophisticatedFilters) compiles against Sophisticated Core;
+    // it is only loaded when that mod is installed, so the published jar works without it (an optional dependency).
+    compileOnly "maven.modrinth:sophisticated-core:${sophisticated_core_version}"
+
+    // Modded storage to test against: dev runs only, never a dependency of the published jar. Run with -Pbare to leave them
+    // all out and check the add-on on its own (vanilla storage only).
+    // Woodworks' wooden chests extend the vanilla class (auto-detected). Sophisticated Storage's don't, open with extra menu data
+    // and have bigger windows: added through extraContainers in run/config/cinematicchests-startup.toml.
+    // Sophisticated Backpacks comes with its own Cinematic Interactions add-on (backpackcinematic, MIT, CurseForge file 9819285):
+    // both add-ons hook Cinematic Interactions' MenuActions, so they are tested side by side.
+    if (!project.hasProperty('bare')) {
+        localRuntime "maven.modrinth:woodworks:4.0.2"
+        localRuntime "maven.modrinth:blueprint:8.2.0"
+        localRuntime "maven.modrinth:sophisticated-storage:${sophisticated_storage_version}"
+        localRuntime "maven.modrinth:sophisticated-core:${sophisticated_core_version}"
+        localRuntime "maven.modrinth:sophisticated-backpacks:${sophisticated_backpacks_version}"
+        localRuntime files("libs/dev/backpackcinematic-1.3.1.jar")
+    }
+}
+
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            cinematic_version_range: cinematic_version_range,
+            neo_version_range      : neo_version_range,
+            sophisticated_core_range: sophisticated_core_range,
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}

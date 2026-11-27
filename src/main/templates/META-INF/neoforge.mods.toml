@@ -1,0 +1,46 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+logoFile="logo.png"
+authors="GussiFruits"
+description='''
+An add-on for Cinematic Interactions: chests, trapped chests, ender chests, barrels and shulker boxes open as first-person scenes instead of a window, so moving between a chest and any other Cinematic Interactions station keeps the cinematic flow.
+'''
+
+[[mixins]]
+config="${mod_id}.mixins.json"
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="${neo_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="cinematic"
+    type="required"
+    versionRange="${cinematic_version_range}"
+    ordering="AFTER"
+    side="BOTH"
+
+# Optional: Sophisticated Storage's upgrades (rack, crafting, filters...) in the scene. Without it the add-on works as usual;
+# with it, it has to be a version the upgrade support was built for.
+[[dependencies.${mod_id}]]
+    modId="sophisticatedcore"
+    type="optional"
+    versionRange="${sophisticated_core_range}"
+    ordering="NONE"
+    side="BOTH"
