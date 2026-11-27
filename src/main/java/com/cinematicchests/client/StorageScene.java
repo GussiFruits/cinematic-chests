@@ -128,6 +128,11 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
     private final Vec3 work;
     /** Middle of the block(s) at the floor: the player stands in front of it. */
     private final Vec3 base;
+    /**
+     * Something stands on the block (a chest stacked on a chest): there is no leaning in over it, so the slots sit on its front
+     * instead, as on a sideways barrel.
+     */
+    private final boolean roofed;
 
     /** The slots of the open menu, laid out; built when the menu arrives. */
     private List<Grid> grids = List.of();
@@ -182,14 +187,27 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
         this.shape = shape;
         Vec3 up = new Vec3(0, 1, 0);
         boolean facingUp = !state.hasProperty(BlockStateProperties.FACING) || state.getValue(BlockStateProperties.FACING) == Direction.UP;
-        style = switch (shape) {
+        partner = shape == Storage.CHEST ? doubleChestPartner(pos, state) : null;
+        boolean overhead = roofedAt(pos) || partner != null && roofedAt(partner);
+        Style natural = switch (shape) {
             case CHEST, ENDER_CHEST -> Style.BOX;
             case BARREL -> facingUp ? Style.TOP : Style.FACE;
             case SHULKER_BOX -> Style.FLOAT;
             case FRONT -> Style.FACE;
         };
-        partner = shape == Storage.CHEST ? doubleChestPartner(pos, state) : null;
-        switch (style) {
+        roofed = overhead && natural != Style.FLOAT;
+        style = roofed ? Style.FACE : natural;
+        if (roofed && natural == Style.BOX) {
+            // the chest's front: each half of a double chest carries its own half of the window
+            if (partner == null) {
+                surfaces.add(chestFront(pos, null, 0.72));
+            } else {
+                boolean thisFirst = ChestBlock.getBlockType(state) == DoubleBlockCombiner.BlockType.FIRST;
+                BlockPos first = thisFirst ? pos : partner, second = thisFirst ? partner : pos;
+                surfaces.add(chestFront(first, second, 0.82));
+                surfaces.add(chestFront(second, first, 0.82));
+            }
+        } else switch (style) {
             case BOX -> {
                 if (partner == null) {
                     surfaces.add(boxSurface(pos, null, 0.72));
@@ -213,6 +231,32 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
         for (Surface surface : surfaces) sum = sum.add(surface.center());
         work = sum.scale(1.0 / surfaces.size());
         base = partner == null ? Vec3.atBottomCenterOf(pos) : Vec3.atBottomCenterOf(pos).add(Vec3.atBottomCenterOf(partner)).scale(0.5);
+    }
+
+    /**
+     * A chest's front (base and lid, 14 px tall), upright: the slots of a chest that has something on top of it. The strip along
+     * its bottom is left to the upgrade rack.
+     */
+    private Surface chestFront(BlockPos block, @Nullable BlockPos toward, double width) {
+        Vec3 center = Vec3.atBottomCenterOf(block).add(0, 0.47, 0).add(side().scale(7 / 16.0 + 0.004));
+        if (toward != null) {
+            center = center.add(Vec3.atLowerCornerOf(toward.subtract(block)).scale(1 / 16.0));
+        }
+        return new Surface(center, right(), new Vec3(0, 1, 0), side(), width, 0.6, false);
+    }
+
+    /** Whether something solid stands on the block (a carpet or a layer of snow leaves room). */
+    private static boolean roofedAt(BlockPos pos) {
+        Level level = Minecraft.getInstance().level;
+        if (level == null) return false;
+        BlockPos above = pos.above();
+        var shape = level.getBlockState(above).getCollisionShape(level, above);
+        return !shape.isEmpty() && shape.max(Direction.Axis.Y) > 0.2;
+    }
+
+    /** A chest (a block entity, drawn after the scene) worked from its front: its slot squares must be solid. */
+    private boolean chestFrontStyle() {
+        return roofed && (shape == Storage.CHEST || shape == Storage.ENDER_CHEST);
     }
 
     private Surface boxSurface(BlockPos block, @Nullable BlockPos toward, double width) {
@@ -371,7 +415,9 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
             case BOX -> new Surface(new Vec3(base.x, base.y + 0.84, base.z).subtract(side().scale(7 / 16.0 - 0.004)), right(), up, side(),
                     partner == null ? 0.8 : 1.6, 0.12, false);
             case TOP -> new Surface(Vec3.atBottomCenterOf(pos).add(0, 1.07, 0).subtract(side().scale(0.47)), right(), up, side(), 0.8, 0.12, false);
-            case FACE -> new Surface(surfaces.get(0).center().add(0, -0.32, 0), right(), up, side(), 0.8, 0.12, false);
+            case FACE -> chestFrontStyle()
+                    ? new Surface(base.add(0, 0.085, 0).add(side().scale(7 / 16.0 + 0.004)), right(), up, side(), partner == null ? 0.8 : 1.6, 0.11, false)
+                    : new Surface(surfaces.get(0).center().add(0, -0.32, 0), right(), up, side(), 0.8, 0.12, false);
             case FLOAT -> new Surface(Vec3.atBottomCenterOf(pos).add(0, 0.3, 0).add(side().scale(0.503)), right(), up, side(), 0.8, 0.12, false);
         };
     }
@@ -608,7 +654,10 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
                     partner == null ? 0.8 : 1.6, 0.36, false);
             case TOP -> new Surface(Vec3.atBottomCenterOf(pos).add(0, 1.36, 0).subtract(side().scale(0.47)), right(), up, side(), 0.8, 0.36, false);
             // on the top, towards its front edge: the buttons over the slots then fall in the top's middle, not past its far edge
-            case FACE -> new Surface(Vec3.atBottomCenterOf(pos).add(0, 1.004, 0).add(side().scale(0.2)), right(), forward(), up, 0.8, 0.5, true);
+            case FACE -> roofed
+                    // its top is taken: upright in front of it, just over its top edge, clear of its slots and of what's on top
+                    ? new Surface(base.add(0, 1.0, 0).add(side().scale(0.62)), right(), up, side(), partner == null ? 0.8 : 1.6, 0.3, false)
+                    : new Surface(Vec3.atBottomCenterOf(pos).add(0, 1.004, 0).add(side().scale(0.2)), right(), forward(), up, 0.8, 0.5, true);
             case FLOAT -> new Surface(Vec3.atBottomCenterOf(pos).add(0, 1.17, 0).add(side().scale(0.53)), right(), up, side(), 0.8, 0.36, false);
         };
     }
@@ -714,6 +763,8 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
     public double leanFov() {
         // a chest's slots are small: lean in closer than for a block-sized surface
         if (style == Style.BOX) return partner != null ? 58 : 48;
+        // a double chest's front is wide: a wider view, as the camera can't go further back than the player stands
+        if (chestFrontStyle() && partner != null) return 64;
         return 56;
     }
 
@@ -724,7 +775,9 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
 
     @Override
     public List<Vec3> approach(LocalPlayer player) {
-        Vec3 stand = new Vec3(base.x + side.getStepX() * 0.9, player.getY(), base.z + side.getStepZ() * 0.9);
+        // the camera stays near the player (the base mod tethers it), so for a double chest's front the player stands further back
+        double out = chestFrontStyle() && partner != null ? 1.2 : 0.9;
+        Vec3 stand = new Vec3(base.x + side.getStepX() * out, player.getY(), base.z + side.getStepZ() * out);
         boolean walk = Math.hypot(stand.x - player.getX(), stand.z - player.getZ()) > 0.06;
         return walk ? List.of(stand) : List.of();
     }
@@ -742,7 +795,9 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
                 look = work.subtract(side().scale(0.04));
             }
             case FACE -> {
-                eye = work.add(side().scale(0.8)).add(0, 0.12, 0);
+                // a chest's front is wider than a barrel's face (a double chest's twice as wide): further back to take it all in
+                double back = !chestFrontStyle() ? 0.8 : partner == null ? 0.9 : 1.15;
+                eye = work.add(side().scale(back)).add(0, 0.12, 0);
                 // aimed a little above the middle, so the slots sit a little low on screen, clear of the drawer
                 look = work.add(0, 0.05, 0);
             }
@@ -752,7 +807,7 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
                 look = work;
             }
         }
-        if (panelView > 0.001 && style == Style.FACE) {
+        if (panelView > 0.001 && style == Style.FACE && !roofed) {
             // standing up over the block: its top (the open upgrade) and its front (the storage) both in view
             double k = Anim.smoother(panelView);
             Vec3 openEye = work.add(side().scale(0.55)).add(0, 0.95, 0);
@@ -762,7 +817,7 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
         } else if (panelView > 0.001) {
             // half way towards the open upgrade's slots and back a little, the same way round: both in view
             Vec3 toPanel = panelSurface().center().subtract(work).scale(0.5 * Anim.smoother(panelView));
-            Vec3 back = side().scale(0.18 * Anim.smoother(panelView));
+            Vec3 back = side().scale((roofed ? 0.5 : 0.18) * Anim.smoother(panelView));
             eye = eye.add(toPanel).add(back);
             look = look.add(toPanel);
         }
@@ -1119,7 +1174,8 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
             double side2 = half(grid) * 2;
             boolean block = ItemPlacer.isBlock(stack);
             if (grid.at().lying()) {
-                float scale = (float) (side2 * 1.05 / ItemPlacer.FLAT_SIZE) * grow;
+                // a stack is drawn as a small, untidy pile, which spreads wider than one item: smaller, to stay in its square
+                float scale = (float) (side2 * (stack.getCount() > 1 ? 0.84 : 1.05) / ItemPlacer.FLAT_SIZE) * grow;
                 ItemPlacer.render(pose, buffers, cam, stack, at, side, 977L + index * 31L, scale, FLAT_TILT, light);
             } else {
                 float size = (float) (side2 * (block ? 0.7 : 0.95)) * grow;
@@ -1251,7 +1307,7 @@ public final class StorageScene<M extends AbstractContainerMenu> extends AddonMe
             double half = half(g) * 0.9;
             Vec3 u = g.u().scale(half), v = g.v().scale(half);
             int fill, frame;
-            if (style == Style.BOX) {
+            if (style == Style.BOX || chestFrontStyle()) {
                 // A chest is drawn after the scene: whatever a see-through square lets through is what lay behind the chest
                 // (the ground), not its floor. So inside chests the squares are solid, in the colours of the chest's wood.
                 float pulse = (float) (0.5 + 0.5 * Math.sin(Scene.clock() * 5));
