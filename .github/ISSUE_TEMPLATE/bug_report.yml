@@ -1,0 +1,72 @@
+name: Bug report
+description: Something doesn't work, looks wrong or crashes
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting! The more of this you fill in, the faster it gets fixed.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What went wrong, and what did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen
+      description: Steps someone else can follow to see it.
+      placeholder: |
+        1. Place a double chest
+        2. Open it and ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: storage
+    attributes:
+      label: Which storage?
+      multiple: true
+      options:
+        - Chest / trapped chest
+        - Double chest
+        - Ender chest
+        - Barrel
+        - Shulker box
+        - Sophisticated Storage block
+        - Sophisticated Storage upgrade
+        - Another mod's storage
+        - Not storage related
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where were you playing?
+      options:
+        - Singleplayer
+        - Open to LAN
+        - Dedicated server
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Cinematic Chests, Cinematic Interactions and NeoForge
+      placeholder: Cinematic Chests 0.1.0, Cinematic Interactions 0.18.30, NeoForge 21.1.268
+    validations:
+      required: true
+
+  - type: textarea
+    id: mods
+    attributes:
+      label: Other mods
+      description: Especially storage mods (Sophisticated Storage, Iron Chests...). A modpack name works too.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Screenshot, log or crash report
+      description: Drag in a screenshot, or paste `logs/latest.log` / the crash report (or a link to mclo.gs).

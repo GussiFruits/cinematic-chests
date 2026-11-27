@@ -1,0 +1,53 @@
+name: Support addition
+description: Ask for another mod's storage to open as a scene
+labels: [support addition]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Many storage blocks can already be added in `config/cinematicchests-startup.toml` under `extraContainers`,
+        for example `"somemod:*_crate=front"`. If that works for you, please say so below: it helps add it built in.
+
+  - type: input
+    id: mod
+    attributes:
+      label: Mod
+      description: Name and a link (CurseForge or Modrinth)
+    validations:
+      required: true
+
+  - type: textarea
+    id: blocks
+    attributes:
+      label: Which blocks?
+      description: The storage blocks and their ids (press F3 and look at the block to see its id).
+      placeholder: ironchest:iron_chest, ironchest:gold_chest
+    validations:
+      required: true
+
+  - type: dropdown
+    id: shape
+    attributes:
+      label: What do they look like?
+      options:
+        - Like a chest (a lid that opens)
+        - Like a barrel
+        - Like a shulker box
+        - Something else
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tried
+    attributes:
+      label: Did you try adding it in the config?
+      options:
+        - Yes, it works
+        - Yes, but something is wrong (describe below)
+        - No
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Upgrades, special slots, anything the scene should show.

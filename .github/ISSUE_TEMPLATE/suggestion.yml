@@ -1,0 +1,23 @@
+name: Suggestion
+description: An idea to make the scenes better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: What would you like, and how would it look or work in the scene?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: What's awkward or missing today that this would fix?
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Sketches, screenshots or examples from other mods.
