@@ -1,7 +1,8 @@
 name: Release
 
 # Pushing a tag like v0.1.1 builds the jar, makes a GitHub release with it, and (once the CURSEFORGE_TOKEN secret is set)
-# uploads it to CurseForge as a beta. The tag must match mod_version in gradle.properties.
+# uploads it to CurseForge as a beta. The tag must match mod_version in gradle.properties, and CHANGELOG.md must have a
+# '## <version>' section: it becomes the release notes on both.
 on:
   push:
     tags: ["v*"]
@@ -42,13 +43,21 @@ jobs:
       - name: Build
         run: ./gradlew build -Pbare --no-configuration-cache
 
+      - name: Release notes from CHANGELOG.md
+        run: |
+          awk -v v="## $VERSION" '$0 == v {on=1; next} on && /^## / {exit} on' CHANGELOG.md > release-notes.md
+          if ! grep -q '[^[:space:]]' release-notes.md; then
+            echo "CHANGELOG.md has no section '## $VERSION'"; exit 1
+          fi
+          cat release-notes.md
+
       - name: GitHub release
         uses: softprops/action-gh-release@v2
         with:
           name: Cinematic Chests ${{ env.VERSION }} (NeoForge 1.21.1)
           files: build/libs/cinematicchests-${{ env.VERSION }}.jar
           prerelease: true
-          generate_release_notes: true
+          body_path: release-notes.md
 
       - name: Upload to CurseForge
         if: env.CURSEFORGE_TOKEN != ''
@@ -60,6 +69,7 @@ jobs:
           name: Cinematic Chests ${{ env.VERSION }} (NeoForge 1.21.1)
           version: ${{ env.VERSION }}
           version-type: beta
+          changelog-file: release-notes.md
           loaders: neoforge
           game-versions: 1.21.1
           java: 21
