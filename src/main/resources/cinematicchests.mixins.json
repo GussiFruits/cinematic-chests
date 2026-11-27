@@ -12,6 +12,7 @@
   "client": [
     "AddonScenesMixin",
     "ParticleEngineMixin",
+    "ReachMixin",
     "SceneMixin",
     "SceneScreenMixin"
   ],
